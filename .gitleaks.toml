@@ -1,0 +1,11 @@
+[extend]
+# 使用默认的 gitleaks 检测规则
+useDefault = true
+
+[allowlist]
+description = "Allow (ignore) database files which contain public test data"
+
+# Ignore all files in database directory - these are public data files
+paths = [
+    "database/.*"
+] 
