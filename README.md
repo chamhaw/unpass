@@ -1,215 +1,147 @@
-# UnPass 密码管理器
+# unpass - 企业级密码审计工具
 
-一个基于现代Android架构组件构建的安全密码管理器应用。
+## 概述
+UnPass是一个专注于2FA和Passkey检测的密码审计工具，使用权威数据源帮助识别密码库中的安全改进机会。
 
-## 🔒 核心特性
+## 功能特性
+- 🔐 **2FA支持检测**：基于3000+网站的权威数据库，识别支持2FA但未启用的网站
+- 🔐 **Passkey支持检测**：基于238+网站的权威数据库，识别支持Passkey但仍用传统密码的网站
+- 📊 **详细元数据**：提供支持的认证方法、设置链接、官方文档等详细信息
 
-### 安全性
-- **端到端加密**: 采用AES-256加密算法保护所有数据
-- **多因素认证**: 支持主密码 + 生物识别认证
-- **零知识架构**: 应用无法访问用户的明文密码
-- **硬件安全模块**: 利用Android Keystore保护密钥
-- **数据库加密**: 使用SQLCipher加密本地数据库
+## 数据源
+- **2FA数据库**: 3,302个网站的2FA支持信息，包含支持的认证方法和官方文档链接
+- **Passkey数据库**: 238个网站的Passkey支持信息，包含设置链接和分类信息
+- **数据更新**: 定期更新以确保检测准确性
 
-### 功能特性
-- 安全的密码存储和管理
-- 强密码生成器
-- 生物识别快速解锁
-- 密码强度分析
-- 数据导入/导出
-- 自动锁定机制
-- 密码泄露检测
+## 安装
 
-## 🏗️ 架构设计
-
-### 模块化架构
-项目采用多模块架构，确保代码的可维护性和可扩展性：
-
+### 从源码构建
+```bash
+git clone <repository-url>
+cd unpass
+make build
 ```
-app/                    # 主应用模块
-├── core-security/      # 核心安全模块
-├── core-database/      # 数据库核心模块
-├── core-crypto/        # 加密核心模块
-├── core-ui/           # UI核心模块
-├── feature-auth/      # 认证功能模块
-├── feature-vault/     # 密码库功能模块
-├── feature-settings/  # 设置功能模块
-└── feature-export/    # 导入导出功能模块
-```
-
-### 技术栈
-- **UI框架**: Jetpack Compose + Material 3
-- **架构组件**: MVVM + Repository Pattern
-- **依赖注入**: Dagger Hilt
-- **数据库**: Room + SQLCipher
-- **网络**: Retrofit + OkHttp
-- **安全**: Android Keystore + Biometric API
-- **加密**: Bouncy Castle + Android Security Crypto
-- **测试**: JUnit + Mockk + Espresso
-
-## 🛠️ 开发环境
 
 ### 系统要求
-- Android Studio Hedgehog | 2023.1.1 或更高版本
-- JDK 11 或更高版本
-- Android SDK API 24+ (Android 7.0)
-- Kotlin 1.9.10+
+- Go 1.24+
+- 检测数据库文件（database目录）
+
+## 使用方法
+
+### 基本审计
+```bash
+# 基础审计（使用默认database目录）
+./bin/unpass audit -f demo.json
+
+# 指定数据库路径
+./bin/unpass audit -f demo.json -d /path/to/database
+
+# 输出到文件
+./bin/unpass audit -f demo.json -o report.json
+```
+
+### 支持的数据格式
+支持JSON格式的密码数据：
+```json
+[
+  {
+    "id": "1",
+    "title": "GitHub Account", 
+    "url": "https://github.com",
+    "username": "user@example.com",
+    "password": "your-password",
+    "notes": "Development account",
+    "tags": ["work", "development"]
+  }
+]
+```
+
+## 架构设计
+采用数据驱动的模块化设计：
+
+### 目录结构
+```
+unpass/
+├── cmd/cli/              # 命令行工具
+├── internal/
+│   ├── audit/            # 审计引擎
+│   ├── detector/         # 检测模块
+│   │   ├── twofa.go      # 2FA检测器
+│   │   └── passkey.go    # Passkey检测器
+│   ├── database/         # 数据库加载器
+│   ├── parser/           # JSON解析器
+│   ├── report/           # JSON报告生成
+│   └── types/            # 数据类型定义
+├── database/             # 权威数据库
+│   ├── 2fa_database.json        # 2FA支持数据库
+│   ├── passkey_database.json    # Passkey支持数据库
+│   └── pwned_passwords_database.json # 泄露密码数据库
+├── configs/              # 配置文件
+└── testdata/             # 测试数据
+```
+
+### 核心组件
+- **数据库加载器**: 加载和解析权威数据源
+- **2FA检测器**: 基于3,302个网站的权威数据库检测2FA支持
+- **Passkey检测器**: 基于238个网站的权威数据库检测Passkey支持
+- **JSON解析器**: 解析密码数据
+- **JSON报告**: 输出详细检测结果
+
+## 开发
 
 ### 构建项目
 ```bash
-# 克隆项目
-git clone https://github.com/yourusername/unpass.git
-cd unpass
-
-# 构建项目
-./gradlew build
-
-# 运行测试
-./gradlew test
-
-# 安装到设备
-./gradlew installDebug
+make build    # 构建二进制文件
+make test     # 运行测试
+make clean    # 清理构建文件
 ```
 
-## 📱 支持的Android版本
-- **最低支持版本**: Android 7.0 (API 24)
-- **目标版本**: Android 14 (API 34)
-- **推荐版本**: Android 10+ (API 29+) 以获得最佳安全特性
+## 示例输出
 
-## 🔧 配置说明
-
-### 构建变体
-- **debug**: 开发调试版本，包含调试信息
-- **release**: 生产发布版本，启用代码混淆和优化
-
-### 签名配置
-生产环境需要配置签名密钥，请在 `app/build.gradle.kts` 中配置：
-
-```kotlin
-android {
-    signingConfigs {
-        release {
-            storeFile file("path/to/your/keystore.jks")
-            storePassword "your_store_password"
-            keyAlias "your_key_alias"
-            keyPassword "your_key_password"
-        }
+### 增强的检测结果
+```json
+{
+  "results": [
+    {
+      "credential_id": "1",
+      "type": "missing_2fa",
+      "severity": "medium", 
+      "message": "Website supports 2FA but may not be enabled",
+      "metadata": {
+        "domain": "github.com",
+        "url": "https://github.com",
+        "supported_methods": ["sms", "totp", "custom-software", "u2f"],
+        "documentation_url": "https://docs.github.com/en/github/authenticating-to-github/..."
+      }
+    },
+    {
+      "credential_id": "1",
+      "type": "missing_passkey",
+      "severity": "medium",
+      "message": "Website supports Passkey but traditional password is still used",
+      "metadata": {
+        "domain": "github.com",
+        "site_name": "GitHub",
+        "support_type": "signin",
+        "setup_link": "https://github.com/settings/security",
+        "category": "Information Technology"
+      }
     }
+  ],
+  "summary": {
+    "total_credentials": 5,
+    "issues_found": 5,
+    "by_type": {
+      "missing_2fa": 3,
+      "missing_passkey": 2
+    }
+  }
 }
 ```
 
-## 🧪 测试
+## 数据库更新
 
-### 运行测试
-```bash
-# 单元测试
-./gradlew test
-
-# 集成测试
-./gradlew connectedAndroidTest
-
-# 代码覆盖率
-./gradlew jacocoTestReport
-```
-
-### 代码质量
-```bash
-# 代码质量检查
-./gradlew detekt
-
-# 代码格式化
-./gradlew ktlintFormat
-
-# 所有检查
-./gradlew check
-```
-
-## 🚀 部署
-
-### 构建发布版本
-```bash
-./gradlew assembleRelease
-```
-
-### 生成AAB包
-```bash
-./gradlew bundleRelease
-```
-
-## 📋 开发指南
-
-### 代码规范
-- 遵循 [Kotlin 编码规范](https://kotlinlang.org/docs/coding-conventions.html)
-- 使用 [ktlint](https://ktlint.github.io/) 进行代码格式化
-- 使用 [detekt](https://detekt.dev/) 进行静态代码分析
-
-### 提交规范
-```bash
-# 功能开发
-git commit -m "feat: 添加密码强度检测功能"
-
-# 问题修复
-git commit -m "fix: 修复生物识别认证失败问题"
-
-# 文档更新
-git commit -m "docs: 更新README文档"
-```
-
-### 分支策略
-- `main`: 主分支，稳定的生产代码
-- `develop`: 开发分支，集成所有新功能
-- `feature/*`: 功能分支，开发新功能
-- `hotfix/*`: 热修复分支，修复紧急问题
-
-## 🔐 安全注意事项
-
-### 开发环境
-- 不要在代码中硬编码密钥或敏感信息
-- 使用环境变量或安全配置文件存储敏感配置
-- 定期更新依赖库以修复安全漏洞
-
-### 生产环境
-- 启用代码混淆和优化
-- 使用强密码保护签名密钥
-- 定期进行安全测试和漏洞扫描
-- 建立安全事件响应机制
-
-## 📄 许可证
-
-本项目采用 MIT 许可证，详情请参阅 [LICENSE](LICENSE) 文件。
-
-## 🤝 贡献
-
-欢迎提交问题和功能请求！请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解详细信息。
-
-### 贡献者
-- [@yourusername](https://github.com/yourusername) - 项目维护者
-
-## 📞 联系我们
-
-- 问题报告: [GitHub Issues](https://github.com/yourusername/unpass/issues)
-- 功能请求: [GitHub Discussions](https://github.com/yourusername/unpass/discussions)
-- 邮件联系: unpass@example.com
-
-## 📋 更新日志
-
-### [1.0.0] - 2024-01-01
-- 初始版本发布
-- 基础密码管理功能
-- 生物识别认证
-- 密码生成器
-- 数据导入导出
-
-## 🙏 致谢
-
-感谢所有开源社区的贡献者和以下项目的支持：
-- [Android Jetpack](https://developer.android.com/jetpack)
-- [Jetpack Compose](https://developer.android.com/jetpack/compose)
-- [Dagger Hilt](https://dagger.dev/hilt/)
-- [Room](https://developer.android.com/training/data-storage/room)
-- [SQLCipher](https://www.zetetic.net/sqlcipher/)
-- [Bouncy Castle](https://www.bouncycastle.org/)
-
----
-
-**安全提醒**: 请定期备份您的密码数据，并确保记住您的主密码。我们无法帮助您恢复遗忘的主密码。 
+检测数据库定期更新以确保准确性：
+- **2FA数据库**: 包含主流网站的2FA支持状态和方法
+- **Passkey数据库**: 跟踪最新的Passkey采用情况
+- **更新频率**: 建议定期更新数据库文件以获得最佳检测效果

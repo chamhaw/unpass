@@ -1,0 +1,3 @@
+detectors:
+  twofa: true
+  passkey: true 
