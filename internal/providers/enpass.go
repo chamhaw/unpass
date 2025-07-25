@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
 	"github.com/yourorg/unpass/internal/types"
 )
 
@@ -46,12 +47,12 @@ type EnpassData struct {
 }
 
 type EnpassItem struct {
-	Archived     int           `json:"archived"`
-	Category     string        `json:"category"`
-	Title        string        `json:"title"`
-	UUID         string        `json:"uuid"`
-	Trashed      int           `json:"trashed"`
-	Fields       []EnpassField `json:"fields"`
+	Archived int           `json:"archived"`
+	Category string        `json:"category"`
+	Title    string        `json:"title"`
+	UUID     string        `json:"uuid"`
+	Trashed  int           `json:"trashed"`
+	Fields   []EnpassField `json:"fields"`
 }
 
 type EnpassField struct {
@@ -76,28 +77,28 @@ func (p *EnpassParser) Name() string {
 func (p *EnpassParser) Parse(reader io.Reader) ([]types.Credential, error) {
 	var enpassData EnpassData
 	decoder := json.NewDecoder(reader)
-	
+
 	if err := decoder.Decode(&enpassData); err != nil {
 		return nil, fmt.Errorf("failed to decode Enpass JSON: %w", err)
 	}
-	
+
 	var credentials []types.Credential
-	
+
 	for _, item := range enpassData.Items {
 		// 跳过不符合条件的数据
 		if !p.shouldProcessItem(item) {
 			continue
 		}
-		
+
 		// 提取字段数据
 		credential := p.extractCredential(item)
-		
+
 		// 验证必要字段
 		if p.isValidCredential(credential) {
 			credentials = append(credentials, credential)
 		}
 	}
-	
+
 	return credentials, nil
 }
 
@@ -111,17 +112,17 @@ func (p *EnpassParser) shouldProcessItem(item EnpassItem) bool {
 	if item.Archived == 1 {
 		return false
 	}
-	
+
 	// 跳过已删除的数据
 	if item.Trashed == 1 {
 		return false
 	}
-	
+
 	// 只处理login类型的数据
 	if item.Category != "login" {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -131,39 +132,47 @@ func (p *EnpassParser) extractCredential(item EnpassItem) types.Credential {
 		ID:    item.UUID,
 		Title: item.Title,
 	}
-	
+
 	// 用于收集备注信息的字段
 	var notes []string
-	
+	// 用于收集所有URL
+	var urls []string
+
 	// 遍历字段提取所需信息
 	for _, field := range item.Fields {
 		// 跳过已删除的字段
 		if field.Deleted == 1 {
 			continue
 		}
-		
+
 		// 跳过空值字段
 		if strings.TrimSpace(field.Value) == "" {
 			continue
 		}
-		
+
 		// 处理字段
-		p.processField(&credential, &notes, field)
+		p.processField(&credential, &notes, &urls, field)
 	}
-	
+
+	// 设置URLs字段和主URL
+	if len(urls) > 0 {
+		credential.URLs = urls
+		credential.URL = urls[0] // 第一个URL作为主URL，保持向后兼容
+	}
+
 	// 合并备注信息
 	if len(notes) > 0 {
 		credential.Notes = strings.Join(notes, "; ")
 	}
-	
+
 	return credential
 }
 
 // processField 处理单个字段
-func (p *EnpassParser) processField(credential *types.Credential, notes *[]string, field EnpassField) {
+func (p *EnpassParser) processField(credential *types.Credential, notes *[]string, urls *[]string, field EnpassField) {
 	fieldType := EnpassFieldType(field.Type)
 	mapping, exists := fieldTypeMappings[fieldType]
-	
+
 	if !exists {
 		// 未知字段类型，作为文本字段处理
 		if field.Label != "" {
@@ -171,17 +180,20 @@ func (p *EnpassParser) processField(credential *types.Credential, notes *[]strin
 		}
 		return
 	}
-	
+
 	switch fieldType {
 	case FieldTypeUsername:
 		credential.Username = field.Value
-		
+
 	case FieldTypePassword:
 		credential.Password = field.Value
-		
+
 	case FieldTypeURL:
-		credential.URL = p.cleanURL(field.Value)
-		
+		cleanedURL := p.cleanURL(field.Value)
+		if cleanedURL != "" {
+			*urls = append(*urls, cleanedURL)
+		}
+
 	case FieldTypeEmail:
 		// 如果没有username，使用email作为username
 		if credential.Username == "" {
@@ -189,17 +201,17 @@ func (p *EnpassParser) processField(credential *types.Credential, notes *[]strin
 		} else if mapping.IsNoteField {
 			*notes = append(*notes, fmt.Sprintf("Email: %s", field.Value))
 		}
-		
+
 	case FieldTypePhone:
 		if mapping.IsNoteField {
 			*notes = append(*notes, fmt.Sprintf("Phone: %s", field.Value))
 		}
-		
+
 	case FieldTypeTOTP:
 		if mapping.IsNoteField {
 			*notes = append(*notes, fmt.Sprintf("TOTP: %s", field.Value))
 		}
-		
+
 	case FieldTypeText:
 		if mapping.IsNoteField && field.Label != "" {
 			*notes = append(*notes, fmt.Sprintf("%s: %s", field.Label, field.Value))
@@ -212,7 +224,7 @@ func (p *EnpassParser) cleanURL(rawURL string) string {
 	if rawURL == "" {
 		return ""
 	}
-	
+
 	// 移除过长的URL参数（可能是callback URL）
 	if len(rawURL) > 120 {
 		// 尝试提取域名部分
@@ -223,7 +235,7 @@ func (p *EnpassParser) cleanURL(rawURL string) string {
 			}
 		}
 	}
-	
+
 	return rawURL
 }
 
@@ -233,12 +245,12 @@ func (p *EnpassParser) isValidCredential(credential types.Credential) bool {
 	if credential.ID == "" || credential.Title == "" {
 		return false
 	}
-	
+
 	// 必须有用户名或密码之一
 	if credential.Username == "" && credential.Password == "" {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -256,5 +268,3 @@ func GetFieldTypeMapping(fieldType EnpassFieldType) (FieldTypeMapping, bool) {
 	mapping, exists := fieldTypeMappings[fieldType]
 	return mapping, exists
 }
-
-
