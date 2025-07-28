@@ -465,3 +465,153 @@ func TestEnpassParser_CleanURL(t *testing.T) {
 		})
 	}
 }
+
+// 添加测试TOTP字段解析的测试用例
+func TestEnpassParser_TOTPField(t *testing.T) {
+	parser := NewEnpassParser()
+	testJSON := `{
+		"items": [
+			{
+				"archived": 0,
+				"category": "login",
+				"title": "Test TOTP Account",
+				"uuid": "test-totp-uuid",
+				"trashed": 0,
+				"fields": [
+					{ "deleted": 0, "type": "username", "value": "testuser", "sensitive": 0 },
+					{ "deleted": 0, "type": "password", "value": "testpass", "sensitive": 1 },
+					{ "deleted": 0, "type": "url", "value": "https://example.com", "sensitive": 0 },
+					{ "deleted": 0, "type": "totp", "value": "otpauth://totp/Example:testuser?secret=JBSWY3DPEHPK3PXP&issuer=Example", "sensitive": 0 }
+				]
+			}
+		]
+	}`
+
+	reader := strings.NewReader(testJSON)
+	credentials, err := parser.Parse(reader)
+
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	if len(credentials) != 1 {
+		t.Fatalf("Expected 1 credential, got %d", len(credentials))
+	}
+
+	cred := credentials[0]
+	if cred.TOTP == "" {
+		t.Error("Expected TOTP field to be set")
+	}
+
+	expectedTOTP := "otpauth://totp/Example:testuser?secret=JBSWY3DPEHPK3PXP&issuer=Example"
+	if cred.TOTP != expectedTOTP {
+		t.Errorf("Expected TOTP '%s', got '%s'", expectedTOTP, cred.TOTP)
+	}
+
+	// 验证Notes中也包含TOTP信息
+	if !strings.Contains(cred.Notes, "TOTP:") {
+		t.Error("Expected TOTP information in Notes field")
+	}
+}
+
+// 添加测试Passkey字段解析的测试用例
+func TestEnpassParser_PasskeyField(t *testing.T) {
+	parser := NewEnpassParser()
+	testJSON := `{
+		"items": [
+			{
+				"archived": 0,
+				"category": "login",
+				"title": "Test Passkey Account",
+				"uuid": "test-passkey-uuid",
+				"trashed": 0,
+				"fields": [
+					{ "deleted": 0, "type": "username", "value": "testuser", "sensitive": 0 },
+					{ "deleted": 0, "type": "password", "value": "testpass", "sensitive": 1 },
+					{ "deleted": 0, "type": "url", "value": "https://example.com", "sensitive": 0 },
+					{ "deleted": 0, "type": "passkey", "value": "webauthn-credential-id-example", "sensitive": 0 }
+				]
+			}
+		]
+	}`
+
+	reader := strings.NewReader(testJSON)
+	credentials, err := parser.Parse(reader)
+
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	if len(credentials) != 1 {
+		t.Fatalf("Expected 1 credential, got %d", len(credentials))
+	}
+
+	cred := credentials[0]
+	if cred.Passkey == "" {
+		t.Error("Expected Passkey field to be set")
+	}
+
+	expectedPasskey := "webauthn-credential-id-example"
+	if cred.Passkey != expectedPasskey {
+		t.Errorf("Expected Passkey '%s', got '%s'", expectedPasskey, cred.Passkey)
+	}
+
+	// 验证Notes中也包含Passkey信息
+	if !strings.Contains(cred.Notes, "Passkey:") {
+		t.Error("Expected Passkey information in Notes field")
+	}
+}
+
+// 添加测试同时包含TOTP和Passkey的情况
+func TestEnpassParser_TOTPAndPasskey(t *testing.T) {
+	parser := NewEnpassParser()
+	testJSON := `{
+		"items": [
+			{
+				"archived": 0,
+				"category": "login",
+				"title": "Test Full Security Account",
+				"uuid": "test-full-uuid",
+				"trashed": 0,
+				"fields": [
+					{ "deleted": 0, "type": "username", "value": "testuser", "sensitive": 0 },
+					{ "deleted": 0, "type": "password", "value": "testpass", "sensitive": 1 },
+					{ "deleted": 0, "type": "url", "value": "https://example.com", "sensitive": 0 },
+					{ "deleted": 0, "type": "totp", "value": "otpauth://totp/Example:testuser?secret=JBSWY3DPEHPK3PXP&issuer=Example", "sensitive": 0 },
+					{ "deleted": 0, "type": "passkey", "value": "webauthn-credential-id-example", "sensitive": 0 }
+				]
+			}
+		]
+	}`
+
+	reader := strings.NewReader(testJSON)
+	credentials, err := parser.Parse(reader)
+
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	if len(credentials) != 1 {
+		t.Fatalf("Expected 1 credential, got %d", len(credentials))
+	}
+
+	cred := credentials[0]
+
+	// 验证TOTP字段
+	if cred.TOTP == "" {
+		t.Error("Expected TOTP field to be set")
+	}
+
+	// 验证Passkey字段
+	if cred.Passkey == "" {
+		t.Error("Expected Passkey field to be set")
+	}
+
+	// 验证Notes中包含两者信息
+	if !strings.Contains(cred.Notes, "TOTP:") {
+		t.Error("Expected TOTP information in Notes field")
+	}
+	if !strings.Contains(cred.Notes, "Passkey:") {
+		t.Error("Expected Passkey information in Notes field")
+	}
+}

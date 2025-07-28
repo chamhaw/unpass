@@ -11,6 +11,52 @@ import (
 	"github.com/yourorg/unpass/internal/types"
 )
 
+// ANSI颜色代码
+const (
+	ColorReset  = "\033[0m"
+	ColorRed    = "\033[31m"
+	ColorGreen  = "\033[32m"
+	ColorYellow = "\033[33m"
+	ColorBlue   = "\033[34m"
+	ColorPurple = "\033[35m"
+	ColorCyan   = "\033[36m"
+	ColorWhite  = "\033[37m"
+	ColorBold   = "\033[1m"
+)
+
+// 颜色辅助函数
+func colorize(color, text string) string {
+	return color + text + ColorReset
+}
+
+func bold(text string) string {
+	return ColorBold + text + ColorReset
+}
+
+func red(text string) string {
+	return colorize(ColorRed, text)
+}
+
+func green(text string) string {
+	return colorize(ColorGreen, text)
+}
+
+func yellow(text string) string {
+	return colorize(ColorYellow, text)
+}
+
+func blue(text string) string {
+	return colorize(ColorBlue, text)
+}
+
+func cyan(text string) string {
+	return colorize(ColorCyan, text)
+}
+
+func purple(text string) string {
+	return colorize(ColorPurple, text)
+}
+
 // TableGenerator 表格报告生成器
 type TableGenerator struct{}
 
@@ -63,14 +109,14 @@ func (g *TableGenerator) Generate(writer io.Writer, report *types.AuditReport) e
 
 		// 2FA问题
 		if len(twofaResults) > 0 {
-			fmt.Fprintf(writer, "Two-Factor Authentication Issues (%d total):\n", len(twofaResults))
+			fmt.Fprintf(writer, "%s\n", bold(red(fmt.Sprintf("Two-Factor Authentication Issues (%d total):", len(twofaResults)))))
 			g.generateClusteredResults(writer, twofaResults)
 			fmt.Fprintln(writer)
 		}
 
 		// Passkey问题
 		if len(passkeyResults) > 0 {
-			fmt.Fprintf(writer, "Passkey Authentication Issues (%d total):\n", len(passkeyResults))
+			fmt.Fprintf(writer, "%s\n", bold(green(fmt.Sprintf("Passkey Authentication Issues (%d total):", len(passkeyResults)))))
 			g.generateClusteredResults(writer, passkeyResults)
 			fmt.Fprintln(writer)
 		}
@@ -97,7 +143,9 @@ func (g *TableGenerator) generateClusteredResults(writer io.Writer, results []ty
 	// 显示聚类结果
 	for _, cluster := range clusters {
 		clusterName := g.generateClusterName(cluster.Results)
-		fmt.Fprintf(writer, "\n[%s] (%d items)\n", clusterName, len(cluster.Results))
+		fmt.Fprintf(writer, "\n[%s] %s\n",
+			bold(cyan(clusterName)),
+			yellow(fmt.Sprintf("(%d items)", len(cluster.Results))))
 
 		// 按标题排序组内结果
 		sort.Slice(cluster.Results, func(i, j int) bool {
@@ -106,9 +154,9 @@ func (g *TableGenerator) generateClusteredResults(writer io.Writer, results []ty
 
 		for _, result := range cluster.Results {
 			domain := g.extractDomain(result.Metadata)
-			fmt.Fprintf(writer, "  %s", result.Title)
+			fmt.Fprintf(writer, "  %s", blue(result.Title))
 			if domain != "-" && domain != "" {
-				fmt.Fprintf(writer, " (%s)", domain)
+				fmt.Fprintf(writer, " %s", purple(fmt.Sprintf("(%s)", domain)))
 			}
 			fmt.Fprintln(writer)
 		}

@@ -11,6 +11,8 @@ type Credential struct {
 	Password string   `json:"password"`
 	Notes    string   `json:"notes,omitempty"`
 	Tags     []string `json:"tags,omitempty"`
+	TOTP     string   `json:"totp,omitempty"`    // TOTP密钥或URI
+	Passkey  string   `json:"passkey,omitempty"` // Passkey信息
 }
 
 type AuditContext struct {

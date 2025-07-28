@@ -44,6 +44,11 @@ func (d *PasskeyDetector) Detect(ctx context.Context, creds []types.Credential) 
 	var results []types.DetectionResult
 
 	for _, cred := range creds {
+		// 如果已经配置了Passkey，跳过检测
+		if cred.Passkey != "" {
+			continue
+		}
+
 		// 收集所有需要检查的URL
 		urlsToCheck := make([]string, 0)
 

@@ -19,6 +19,7 @@ const (
 	FieldTypeEmail    EnpassFieldType = "email"
 	FieldTypePhone    EnpassFieldType = "phone"
 	FieldTypeTOTP     EnpassFieldType = "totp"
+	FieldTypePasskey  EnpassFieldType = "passkey"
 	FieldTypeText     EnpassFieldType = "text"
 )
 
@@ -38,6 +39,7 @@ var fieldTypeMappings = map[EnpassFieldType]FieldTypeMapping{
 	FieldTypeEmail:    {Type: FieldTypeEmail, Priority: 2, IsPrimary: false, IsNoteField: true},
 	FieldTypePhone:    {Type: FieldTypePhone, Priority: 3, IsPrimary: false, IsNoteField: true},
 	FieldTypeTOTP:     {Type: FieldTypeTOTP, Priority: 3, IsPrimary: false, IsNoteField: true},
+	FieldTypePasskey:  {Type: FieldTypePasskey, Priority: 3, IsPrimary: false, IsNoteField: true},
 	FieldTypeText:     {Type: FieldTypeText, Priority: 4, IsPrimary: false, IsNoteField: true},
 }
 
@@ -208,8 +210,17 @@ func (p *EnpassParser) processField(credential *types.Credential, notes *[]strin
 		}
 
 	case FieldTypeTOTP:
+		// 存储TOTP信息
+		credential.TOTP = field.Value
 		if mapping.IsNoteField {
 			*notes = append(*notes, fmt.Sprintf("TOTP: %s", field.Value))
+		}
+
+	case FieldTypePasskey:
+		// 存储Passkey信息
+		credential.Passkey = field.Value
+		if mapping.IsNoteField {
+			*notes = append(*notes, fmt.Sprintf("Passkey: %s", field.Value))
 		}
 
 	case FieldTypeText:
